@@ -1,0 +1,814 @@
+<!DOCTYPE html>
+<html>
+    <head>
+        <script type="text/javascript" src="jquery-2.1.3.min.js"></script>
+        <script type="text/javascript" src="introtoapps-may.min.js"></script>
+        <script type="text/javascript">
+            /* ==============================================
+            ** GLOBAL VARIABLES **
+            ==============================================  */
+            var health = 150;
+            var energy = 0;
+            var enemyCount = 1;
+            var knight;
+            var enemyNumber;
+            var equationType = ["+","-","*","/"];
+            var A;
+            var B;
+            var addition;
+            var subtract;
+            var multiply;
+            var divide;
+            var nextLevelCount = 0;
+            var bgMusic = document.getElementById("backgroundMusic");
+            var heroVoice = document.getElementById("heroCollisionSound");
+            var enemyDeath = document.getElementById("enemyDeathSound");
+            /* ==============================================
+            ** CONSTANTS - in Milliseconds**
+            ==============================================  */
+            var ATTACK_STARTUP = 200;
+            var ATTACK_DURATION = 500;
+            var ATTACK_TOTAL = 1000;
+            /* ==============================================
+            ** APP START UP **
+            ==============================================  */
+            $(document).ready(function () {
+                centerBackground();
+                // Calls equation and test number function to set up the screen
+                equation();
+                // Set up the knights data attribute
+                var knight = $("#knight");
+                // Attack button is tapped - knight will attack with his sword.
+                $(".attack").onTap(function() {
+                    // Creates the sword object
+                    var swordAttack = $("<div class='sword'></div>");
+                    $("#page2").append(swordAttack);
+                    // Sets sword to fly right towards enemies.
+                    $(".sword").moveTo(90);
+                    $(".sword").speed(0.5);
+                    // Collision between sword and enemy.
+                    swordAttack.onCollision(function(otherObject) {
+                        if (otherObject.hasClass("enemy")) {
+                            $(".enemy").remove();
+                            $(".sword").remove();
+                            // Always generate an enemy when another dies.
+                            spawnEnemy();
+                            // Add 5 pts of energy
+                            energy += 2;
+                            $(".energy").css("width", energy);
+                            // Check if you have won
+                            victoryCondition();
+                            // Play sound effect
+                            enemyDeathSound.play();
+                        }
+                    });
+                    // Control animation state
+                    knight.css("animation-play-state", "running");
+                    knight.css("animation-iteration-count", "infinite");
+                    knight.css("animation-duration", ATTACK_TOTAL);
+                    // Knight starts attack
+                    setTimeout(function () {}, ATTACK_STARTUP);
+                    // Knight mid attack
+                    setTimeout(function () {}, ATTACK_DURATION);
+                    // Knight finishes attacking
+                    setTimeout(function () {
+                        knight.css("animation-play-state", "paused");
+                    }, ATTACK_TOTAL);
+                });
+                // Starts the game
+                $("#playButton").onTap(function(){
+                    $("#page1").removeClass("show");
+                    $("#page2").addClass("show");
+                    // Sets the background music to play
+                    backgroundMusic.play();
+                    /* A loop that spawns an enemy
+                    (with abiility to spawn more in later versions)*/
+                    for (var i = 0; i < enemyCount; i++) {
+                       spawnEnemy();
+                    }
+                });
+                // How to play menu item
+                $("#howToPlay").onTap(function(){
+                    $("#page1").removeClass("show");
+                    $("#page6").addClass("show");
+                    $("#page6").onTap(function(){
+                        location.reload();
+                    })
+                });
+
+            });
+
+            /* ==============================================
+            ** FUNCTION THAT SPAWNS THE ENEMIES **
+            ==============================================  */
+            function spawnEnemy() {
+                // Calls the random number function
+                randomEnemyNumber();
+                // Creates an enemy from 0 - 9, and gives them a spawnPoint
+                var spawnPoint = random(0,100);
+                // Appends the enemy to the body
+                var enemy = $("<div class='enemy n"+ enemyNumber + "' style='right: " + spawnPoint + "px;'></div>");
+                $("body").append(enemy);
+                // Make it dynamic - mobi
+                enemy.moveTo(270);
+                enemy.speed(random(0.1, 0.4));
+
+                /* ==============================================
+                ** COLLISION BETWEEN ENEMY AND HERO **
+                ==============================================  */
+                enemy.onCollision(function(otherObject) {
+                    if (otherObject.hasClass("hero")) {
+                        $(this).remove();
+                        // Always generate an enemy when another dies.
+                        spawnEnemy();
+                        health -= 10;
+                        $(".health").css("width", health);
+                        // Checks if the player has lost
+                        lossCondition();
+                    }
+                });
+                $(".enemy").onTap(function(){
+                    // Plays the hero sound effect
+                    heroCollisionSound.play();
+                    // Checks the number being clicked
+                    testNumber();
+                });
+            }
+
+            /* ==============================================
+            ** EQUATION ENTITIES **
+            ==============================================  */
+            // Sets the enemy number
+            function randomEnemyNumber() {
+                enemyNumber = random(0,9);// Between 0 -> 9
+            }
+            /* Creates the items for the equation etitiy
+                example. - A + B = C
+            */
+
+            function equation() {
+                // Random number between 0 and 20
+                var A = random(0,20);
+                // Random number between 0 and 9
+                B = random(0,9);
+                console.log("B=",B)
+                // Equation types
+                addition = A + B;
+                subtract = A - B;
+                multiply = A * B;
+                divide = A + B;
+                var equals = "=";
+                // Switch statement to alter the equation types
+                switch (equationType) {
+                    // Subtract
+                    case [1] :
+                        $("#sumC").html(subtract);
+                        $("#sumType").html(equationType[1]);
+                        break;
+                    // Multiply
+                    case [2] :
+                        $("#sumC").html(multiply);
+                        $("#sumType").html(equationType[2]);
+                        break;
+                    // Divide - Could not implement in time
+                    case [3] :
+                        break;
+                    // Addition
+                     default :
+                        $("#sumC").html(addition);
+                        $("#sumType").html(equationType[0]);
+                        break;
+                }
+                $("#sumA").html(A);
+                $("#equals").html(equals);
+            }
+            // Function to check if the player lost.
+            function lossCondition() {
+                if (health <= 0) {
+                    pause(true);
+                    $("#page3").addClass("show");
+                    console.log("YOU FAILED");
+                    $("#page3").onTap(function(){
+                        location.reload();
+                    });
+                }
+            }
+            // Function to check if the player won.
+            function victoryCondition() {
+                if (energy >= 150) {
+                    $("#page4").addClass("show");
+                    console.log("YOU WON");
+                    // Increments nextLevelCount to alter the characters
+                    nextLevelCount += 1;
+                    // Resets energy bar
+                    energy = 0;
+                    // Checks to see which charcter is next.
+                    $("#page4").onTap(function(){
+                        if(nextLevelCount == 1){
+                            addThief();
+                        } else if (nextLevelCount == 2) {
+                            addMage();
+                        } else if (nextLevelCount == 3) {
+                            addWitch();
+                        } else if (nextLevelCount >= 4) {
+                            congratulations();
+                        }
+
+                    });
+                }
+            }
+            // Test number function checks the match up between enemy number and B
+            function testNumber() {
+                if( enemyNumber == B ) {
+                    // Equation background is green
+                    $(".sum").css("background-color","green");
+                    $("#answerCheck").html("Correct!");
+                    // Remove enemy because it's correct
+                    $(".enemy").remove();
+                    // Always generate an enemy when another dies.
+                    spawnEnemy();
+                    // Gain 25 points of energy and reset equation
+                    energy +=25;
+                    $(".energy").css("width", energy);
+                    // Check if the player won
+                    victoryCondition();
+                    equation();
+                }
+                else {
+                    // Equation background is red
+                    $(".sum").css("background-color","red");
+                    // Generate a different enemy number
+                    randomEnemyNumber();
+                    $("#answerCheck").html("Try Again!");
+                    // Enemy hurts hero for 20pts of health and gains speed
+                    health -= 20;
+                    $(".enemy").speed(0.5);
+                    // 20px removed from .health's width property
+                    $(".health").css("width", health);
+                    lossCondition();
+                }
+
+            }
+            // Removes knight, adds thief, adds - and changes background-color
+            function addThief() {
+                $("#page4").removeClass("show");
+                $("#knight").remove();
+                $("#sumType").html(equationType[1]);
+                $("#sumC").html(subtract);
+                $("#page2").append("<div id='thief'class='hero'></div>");
+                $("body").css("background-color", '#d67ad6');
+
+                console.log("levelcount thief", nextLevelCount);
+            }
+            // Removes thief, adds mage, adds * and changes background-color
+            function addMage() {
+
+                $("#page4").removeClass("show");
+                $("#thief").remove();
+                $("#sumType").html(equationType[2]);
+                $("#sumC").html(multiply);
+                $("#page2").append("<div id='mage'class='hero'></div>");
+                $("body").css("background-color", '#d67a91');
+
+                console.log("levelcount mage", nextLevelCount);
+            }
+            // Removes mage, adds witch, adds / and changes background-color
+            function addWitch() {
+                $("#page4").removeClass("show");
+                $("#mage").remove();
+                // var x = [10,20,30,40,50,60,70,80,90,100];
+                // var F = 10;
+                // var D = x[(random(0,9))];
+                // $("#sumC").html(divide);
+                $("#sumA").html(A);
+                $("#page2").append("<div id='witch'class='hero'></div>");
+                $("body").css("background-color", '#d6bf7a');
+
+                console.log("levelcount witch", nextLevelCount);
+            }
+            // Game finished
+            function congratulations() {
+                $("#page4").remove();
+                $("#page5").addClass("show");
+                $("#page5").onTap(function(){
+                    location.reload();
+                });
+            }
+            // Centers the mountain
+            function centerBackground() {
+                var screenWidth = $(window).width();
+                var backgroundWidth = $(".background").width();
+                var result = (screenWidth/2) - (backgroundWidth/2);
+                $(".background").css('background-position', +result+ 'px 0px');
+            }
+        </script>
+
+        <style type= "text/css">
+            html {
+                box-sizing: border-box;
+            }
+            *, *:before, *:after {
+                box-sizing: inherit;
+            }
+            body {
+                background-color:#b87cd7;
+                margin: 0px;
+                z-index: 0;
+                font-family: helvetica;
+            }
+            footer {
+                position: absolute;
+                left: 50%;
+            }
+            /* ==============================================
+            ** ELEMENTS FOR THE BACKGROUND **
+            ==============================================  */
+            .foreground {
+                position:fixed;
+                width: 100vw;
+                height: 83px;
+                bottom: 4px;
+                background-repeat: no-repeat;
+            }
+            .background {
+                position:absolute;
+                top: 200px;
+                width: 1334px;
+                height: 393px;
+                background-position: 0px, 0px;
+                background-repeat: no-repeat;
+            }
+            #foreground {
+                background-image: url("img/foreground.png");
+
+            }
+            #backgroundFront {
+                background-image: url("img/background_front.png");
+
+            }
+            #backgroundMiddle {
+                background-image: url("img/background_middle.png");
+                height: 366px;
+
+            }
+            .enemy {
+                position: absolute;
+                z-index: 10;
+                cursor: pointer;
+            }
+            .health {
+                background-image:url("img/heart_sprite.gif");
+                position: absolute;
+                width:150px;
+                height: 50px;
+                left:10px;
+                top:1px;
+                border-radius: 20px;
+            }
+            .energy {
+                background-image: url("img/energy_sprite.gif");
+                position: absolute;
+                width:0px;
+                height:50px;
+                left:10px;
+                top:55px;
+                border-radius: 20px;
+            }
+            /* ==============================================
+            ** ANIMATED CLOUDS **
+            ==============================================  */
+            .cloud {
+                position: absolute;
+            }
+            #cloud_001 {
+                background-image: url("img/cloud_001.png");
+                width:205px;
+                height:74px;
+
+                position: absolute;
+                animation-name: cloud_1;
+                animation-duration: 15s;
+                animation-timing-function: linear;
+                animation-iteration-count: infinite;
+                animation-direction: alternate;
+            }
+            #cloud_002 {
+                background-image: url("img/cloud_002.png");
+                width:453px;
+                height:187px;
+                top: 150px;
+                position: absolute;
+                animation-name: cloud_1;
+                animation-duration: 60s;
+                animation-timing-function: linear;
+                animation-iteration-count: infinite;
+                animation-direction: alternate;
+            }
+
+
+            /* ==============================================
+            ** EQUATION **
+            ==============================================  */
+
+            .equation {
+                background-color: #c2c2d6;
+                position: absolute;
+                width: 300px;
+                height: 110px;
+                right: 10px;
+                top:1px;
+                border-radius: 20px;
+                text-align: center;
+                padding-top: 20px;
+
+            }
+
+            .sum {
+                position: absolute;
+                width: 50px;
+                height: 50px;
+                background-color: #fff;
+                border-radius: 20px;
+                text-align: center;
+                padding-top: 15px;
+                font-size: 20px;
+            }
+            .signs {
+                position: absolute;
+                width: 25px;
+                height: 25px;
+                background-color: #fff;
+                border-radius: 10px;
+                text-align: center;
+                top: 30px;
+                padding-top: 5px;
+                font-size: 10px;
+            }
+            #sumA {
+                left:40px;
+            }
+            #sumType {
+                left: 90px;
+            }
+            #sumB {
+                left: 120px;
+            }
+            #equals {
+                left: 180px;
+            }
+            #sumC {
+                left: 210px;
+            }
+            #answerCheck{
+                position: absolute;
+                width: 150px;
+                height: 50px;
+                top: 80px;
+
+            }
+
+            /* ==============================================
+            ** ENEMY PROPERTIES **
+            ==============================================  */
+
+            .enemy.n0 {
+                width: 40px;
+                height: 38px;
+                bottom:53px;
+                background-image:url("img/enemies/enemy_000.png");
+
+            }
+            .enemy.n1 {
+                width: 32px;
+                height: 58px;
+                bottom:53px;
+                background-image:url("img/enemies/enemy_001.png");
+            }
+            .enemy.n2 {
+                width: 34px;
+                height: 69px;
+                bottom:50px;
+                background-image:url("img/enemies/enemy_002.png");
+            }
+            .enemy.n3 {
+                width: 25px;
+                height: 83px;
+                bottom:53px;
+                background-image:url("img/enemies/enemy_003.png");
+            }
+            .enemy.n4 {
+                width: 51px;
+                height: 58px;
+                bottom:53px;
+                background-image:url("img/enemies/enemy_004.png");
+            }
+            .enemy.n5 {
+                width: 37px;
+                height: 96px;
+                bottom:50px;
+                background-image:url("img/enemies/enemy_005.png");
+            }
+            .enemy.n6 {
+                width: 46px;
+                height: 62px;
+                bottom:53px;
+                background-image:url("img/enemies/enemy_006.png");
+            }
+            .enemy.n7 {
+                width: 52px;
+                height: 66px;
+                bottom:53px;
+                background-image:url("img/enemies/enemy_007.png");
+            }
+            .enemy.n8 {
+                width: 51px;
+                height: 45px;
+                bottom:50px;
+                background-image:url("img/enemies/enemy_008.png");
+            }
+            .enemy.n9 {
+                width: 55px;
+                height: 89px;
+                bottom:50px;
+                background-image:url("img/enemies/enemy_009.png");
+            }
+
+            /* ===================================================
+            ** HEROES - KNIGHT, THIEF, MAGE, WITCH - PROPERTIES **
+            =====================================================*/
+
+            .hero {
+                position: absolute;
+                left: 32px;
+                bottom: 50px;
+                z-index: 10;
+            }
+            /*HEROES*/
+            #knight {
+                background-image: url("img/heroes/knight_sprite.png");
+                width:69px;
+                height:88px;
+                animation-name: attack;
+                animation-play-state: paused;
+                animation-duration: 1s;
+            }
+            #thief {
+                background-image: url("img/heroes/thief_sprite.png");
+                width:56px;
+                height:63px;
+            }
+            #mage {
+                background-image: url("img/heroes/mage_sprite.png");
+                width:56px;
+                height:80px;
+            }
+            #witch {
+                background-image: url("img/heroes/witch_sprite.png");
+                width:48px;
+                height:82px;
+            }
+            .attack {
+                width: 100px;
+                height:30px;
+                background-color: purple;
+                position: absolute;
+                bottom: 5px;
+                left: 10px;
+                text-align: center;
+                color: #fff;
+                border-radius: 50px;
+                padding: 5px 10px;
+                cursor: pointer;
+            }
+            .sword {
+                background-image: url("img/heroes/sword.png");
+                width:56px;
+                height:7px;
+                position:absolute;
+                z-index: 10;
+                bottom: 80px;
+                left: 50px;
+            }
+
+            /* ==============================================
+            ** ANIMATIONS - Clouds, Knight and ScreenButtons **
+            ==============================================  */
+            @keyframes attack {
+                0% {
+                    background-image:url('img/heroes/knight_sprite.png');
+                }
+                50% {
+                    background-image:url('img/heroes/knight_attack.png');
+                    width: 88px;
+                }
+                100% {
+                    background-image:url('img/heroes/knight_sprite.png');
+
+                }
+            }
+            @keyframes cloud_1 {
+                0% {
+                    left: 0vw;
+                }
+                100% {
+                    left: 100vw;
+                }
+            }
+            @keyframes cloud_2 {
+                0% {
+                    left: 0vw;
+                }
+                100% {
+                    left: 100vw;
+                }
+            }
+            @keyframes screenButtonAni {
+                0% {
+                    left: -10vw;
+                }
+                100% {
+                    left: 300px;
+                }
+            }
+            /* ==============================================
+            ** PAGE CLASSES - Allowing page switching **
+            ==============================================  */
+            .page {
+                display:none;
+	            position: absolute;
+	            top: 0px;
+	            z-index: -1;
+            }
+            .show {
+            	z-index: 0 !important;
+            	display:block !important;
+            }
+            /*Menu Page*/
+            #page1 {
+                background-image:url("img/iphone6_menu.png");
+                position:fixed;
+                width:375px;
+                height:667px;
+                left: 50%;
+                margin-right: -50%;
+			    transform: translate(-50%, 0%);
+                background-repeat: no-repeat;
+
+            }
+            .button {
+                width: 100px;
+                height:30px;
+                background-color: purple;
+                position: absolute;
+                background-position: inherit;
+                text-align: center;
+                color: #fff;
+                border-radius: 50px;
+                padding: 5px 10px;
+                cursor: pointer;
+                top: 63%;
+            }
+            #playButton{
+                left: 5%;
+            }
+            #licence {
+                left: 38%;
+            }
+            #howToPlay {
+                height: 50px;
+                left: 70%;
+            }
+            /*Main Content of Game*/
+            #page2 {
+                position: absolute;
+                width:100%;
+                height:100%;
+            }
+            /*class for page3,4 and 5*/
+            .screenButton {
+                animation-name: screenButtonAni;
+                animation-duration: 1s;
+                animation-timing-function: linear;
+                animation-direction: alternate;
+                border-radius: 20px;
+                margin-right: -50%;
+			    transform: translate(-50%, 0%);
+                top: 200px;
+                text-align: center;
+                background-color: purple;
+                cursor:pointer;
+                color: #fff;
+
+            }
+            /*Game Over*/
+            #page3 {
+                position: absolute;
+                font-size: 50px;
+                left: 300px;
+                width:580px;
+                height: 100px;
+            }
+            /*Next Level*/
+            #page4 {
+                position: absolute;
+                font-size: 50px;
+                left: 200px;
+                width: 500px;
+                height: 150px;
+            }
+            /*CONGRATULATIONS*/
+            #page5 {
+                position: absolute;
+                font-size: 50px;
+                left: 200px;
+                width: 500px;
+                height: 150px;
+
+            }
+            /*HOW TO PLAY*/
+            #page6 {
+                position: absolute;
+                font-size: 20px;
+                width:375px;
+                height:667px;
+                color: white;
+                left: 50%;
+                margin-right: -50%;
+			    transform: translate(-50%, 0%);
+                text-align:center;
+
+
+            }
+            /* ==============================================
+            ** MEDIA QUERIES - Enable Resizing **
+            ==============================================  */
+            /*shrinks the equation class when screen gets smaller*/
+            @media screen and (max-width: 600px){
+                .equation {
+                    transform: scale(0.5);
+                    right: -80px;
+                    top: -30px;
+                }
+                footer {
+                    z-index: -1;
+                }
+            }
+        </style>
+      </head>
+    <body>
+        <div id ="page1" class="page show" >
+            <div id="playButton" class="button">PLAY</div>
+            <div id="licence" class="button">LICENCE</div>
+            <div id="howToPlay" class="button">HOW TO PLAY</div>
+        </div>
+            <div id ="page2" class="page ">
+                <audio loop="loop" id="backgroundMusic">
+                    <source src="sounds/lute_bgm.mp3" type="audio/mpeg">
+                </audio>
+                <audio id="heroCollisionSound">
+                    <source src="sounds/hero_collision.mp3" type="audio/mpeg">
+                </audio>
+                <audio  id="enemyDeathSound">
+                    <source src="sounds/monster_death.mp3" type="audio/mpeg">
+                </audio>
+                    <div id ="backgroundMiddle" class ="background"></div>
+                    <div id ="cloud_002" class ="cloud"></div>
+                    <div id ="backgroundFront" class ="background"></div>
+                    <div id ="cloud_001"class ="cloud"></div>
+                    <div id ="foreground" class ="foreground"></div>
+                    <div id ="knight"class="hero"></div>
+                    <div class="health"></div>
+                    <div class="energy"></div>
+                    <div class="equation">
+                        <div id="sumA"class= "sum"></div>
+                        <div id="sumType"class="signs"></div>
+                        <div id="sumB"class= "sum"></div>
+                        <div id="equals"class="signs"></div>
+                        <div id="sumC"class= "sum"></div>
+                        <div id="answerCheck"class="sum"></div>
+                    </div>
+                    <div class="attack">ATTACK!</div>
+                    <div id ="page3" class="page screenButton">GAME OVER DUDE!!!!</div>
+                    <div id ="page4" class="page screenButton">NEXT LEVEL!!!! </br> click here</div>
+                    <div id ="page5" class="page screenButton">Thank You for</br> Playing My Game!</div>
+            </div>
+            <div id ="page6" class="page ">
+                <p>
+                    HOW TO PLAY:</br>
+                     You are the</br><b>BRAVE</b> Addition Knight,</br> the <i>DEVIOUS</i> Subtraction Thief,
+                    </br>the <b>WISE</b> Multiplication Mage, and </br>the <i>WICKED</i> Division Witch!</br>
+                     Attack the oncoming MONSTERS by clicking the attack button to unleash a brutal
+                    onslaught of mighty broadswords.</br></br>
+                    + - * /
+                    <hr>
+                    Solve the equation by matching up the blank number with the right numbered <i>MONSTER</i>. </br>
+                     Attack the incorrect <i>MONSTERS</i>, be careful they get <b>ANGRY</b> if they are the wrong answer!</br>
+                     Solving equations to gain <b>ENERGY POINTS</b> to progress to the <b>NEXT LEVEL</b>.
+                     Attacking  <i>MONSTERS</i> also gains <b>ENERGY POINTS</b>.</br>
+                     <hr>
+                     BACK<<<
+                </p>
+            </div>
+    </body>
+    <footer>Jonathan Turnbull, jmturnbu, SID:214527872</footer>
+</html>
